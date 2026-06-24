@@ -31,14 +31,14 @@ export default function Header() {
   return (
     <header className="border-b" style={{ borderColor: "rgba(26,16,8,0.12)", background: "var(--background)" }}>
       <div className="max-w-3xl mx-auto px-6 py-5 flex items-center justify-between">
-        <Link href="/" className="flex items-center gap-3 no-underline">
-          <Image src="/logo.png" alt="By Florence logo" width={52} height={52} className="rounded-sm" />
-          <span className="text-lg font-medium" style={{ color: "var(--foreground)" }}>By Florence</span>
+        <Link href="/" className="flex items-center gap-3 no-underline shrink-0">
+          <Image src="/logo.png" alt="By Florence logo" width={40} height={40} className="rounded-sm" />
+          <span className="text-lg font-medium whitespace-nowrap" style={{ color: "var(--foreground)" }}>By Florence</span>
         </Link>
-        <nav className="flex items-center gap-5">
-          <Link href="/" className="text-sm hover:opacity-70 transition-opacity" style={{ color: "var(--foreground)" }}>Writing</Link>
-          <Link href="/about" className="text-sm hover:opacity-70 transition-opacity" style={{ color: "var(--foreground)" }}>About</Link>
-          <div className="flex items-center gap-4 ml-2">
+        <nav className="flex items-center gap-3 sm:gap-5">
+          <Link href="/" className="text-sm hover:opacity-70 transition-opacity hidden sm:block" style={{ color: "var(--foreground)" }}>Writing</Link>
+          <Link href="/about" className="text-sm hover:opacity-70 transition-opacity hidden sm:block" style={{ color: "var(--foreground)" }}>About</Link>
+          <div className="flex items-center gap-3 sm:gap-4">
             <a href="https://www.instagram.com/spro.utingplant/" target="_blank" rel="noopener noreferrer" aria-label="Instagram" className="hover:opacity-70 transition-opacity" style={{ color: "var(--foreground)" }}>
               <InstagramIcon />
             </a>
