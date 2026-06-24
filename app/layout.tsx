@@ -27,6 +27,15 @@ export default function RootLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en" className={`${fraunces.variable} h-full antialiased`}>
+      <head>
+        <script async src="https://www.googletagmanager.com/gtag/js?id=G-LTWXN9BQBV" />
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.dataLayer = window.dataLayer || [];
+          function gtag(){dataLayer.push(arguments);}
+          gtag('js', new Date());
+          gtag('config', 'G-LTWXN9BQBV');
+        `}} />
+      </head>
       <body className="min-h-full flex flex-col" style={{ fontFamily: "var(--font-fraunces), serif" }}>
         <Header />
         <main className="flex-1">{children}</main>
