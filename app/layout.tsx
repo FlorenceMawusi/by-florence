@@ -20,6 +20,20 @@ export const metadata: Metadata = {
     ],
     apple: "/apple-touch-icon.png",
   },
+  openGraph: {
+    title: "By Florence — AI & Spirituality",
+    description: "Writing at the intersection of artificial intelligence and spiritual growth.",
+    url: "https://byflorence.net",
+    siteName: "By Florence",
+    images: [{ url: "https://byflorence.net/og-image.png", width: 1200, height: 630 }],
+    type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "By Florence — AI & Spirituality",
+    description: "Writing at the intersection of artificial intelligence and spiritual growth.",
+    images: ["https://byflorence.net/og-image.png"],
+  },
 };
 
 export default function RootLayout({
