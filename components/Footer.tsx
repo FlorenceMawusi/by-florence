@@ -27,7 +27,21 @@ function SubstackIcon() {
 export default function Footer() {
   return (
     <footer className="border-t mt-16" style={{ borderColor: "rgba(26,16,8,0.12)" }}>
-      <div className="max-w-3xl mx-auto px-6 py-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+      <div className="max-w-3xl mx-auto px-6 pt-10 pb-4 text-center">
+        <p className="text-sm mb-3" style={{ color: "var(--foreground)", opacity: 0.6 }}>
+          Enjoyed reading? Get new essays in your inbox.
+        </p>
+        <a
+          href="https://sproutingplant.substack.com/subscribe"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-block px-5 py-2 rounded-full text-sm font-medium transition-opacity hover:opacity-80"
+          style={{ background: "var(--accent)", color: "#fff" }}
+        >
+          Subscribe on Substack
+        </a>
+      </div>
+      <div className="max-w-3xl mx-auto px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-4">
         <span className="text-sm" style={{ color: "var(--foreground)", opacity: 0.5 }}>
           © {new Date().getFullYear()} Florence. All rights reserved.
         </span>
