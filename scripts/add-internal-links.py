@@ -49,11 +49,11 @@ LINKS = [
         "youre-no-one-and-everyone",
         "stuck",
     ),
-    # Emotional pangs → Fog and anchor ("feeling")
+    # Emotional pangs → Fog and anchor ("storm")
     (
         "how-our-emotional-pangs-makes-us", 201916494,
         "the-fog-and-the-anchor",
-        "feeling",
+        "storm",
     ),
     # Fog and anchor → Emotional pangs ("emotions")
     (
@@ -145,49 +145,118 @@ def fetch_post(opener, slug):
         return None
 
 
-def inject_link(body_html, anchor_phrase, target_url):
+def inject_link_into_prosemirror(doc, anchor_phrase, target_url):
     """
-    Find the FIRST occurrence of anchor_phrase (case-insensitive, outside existing <a> tags)
-    and wrap it with a link. Returns (new_html, matched_text | None).
+    Walk a ProseMirror JSON doc and wrap the FIRST occurrence of anchor_phrase
+    (case-insensitive) in a text node with a link mark.
+    Returns (modified_doc, matched_text | None).
     """
-    # Build a pattern that matches the phrase but only if NOT already inside an <a ...>
-    # Strategy: split on <a ...>...</a> blocks, inject only into text segments.
-    parts = re.split(r'(<a\s[^>]*>.*?</a>)', body_html, flags=re.DOTALL | re.IGNORECASE)
-    injected = False
-    result = []
-    matched_text = None
-    for part in parts:
-        if not injected and not part.startswith('<a'):
-            pattern = re.compile(re.escape(anchor_phrase), re.IGNORECASE)
-            m = pattern.search(part)
+    pattern = re.compile(re.escape(anchor_phrase), re.IGNORECASE)
+    matched = [None]
+
+    def walk(node):
+        if matched[0]:
+            return node
+        if node.get("type") == "html" and not matched[0]:
+            html_content = node.get("attrs", {}).get("html", "")
+            m = pattern.search(html_content)
             if m:
-                matched_text = m.group(0)
-                replacement = f'<a href="{target_url}">{matched_text}</a>'
-                part = part[:m.start()] + replacement + part[m.end():]
-                injected = True
-        result.append(part)
-    return ''.join(result), matched_text
+                matched[0] = m.group(0)
+                replacement = f'<a href="{target_url}">{m.group(0)}</a>'
+                new_html = html_content[:m.start()] + replacement + html_content[m.end():]
+                return {**node, "attrs": {**node["attrs"], "html": new_html}}
+            return node
+        if node.get("type") == "text" and not matched[0]:
+            # Skip if already has a link mark
+            marks = node.get("marks", [])
+            if any(m.get("type") == "link" for m in marks):
+                return node
+            text = node.get("text", "")
+            m = pattern.search(text)
+            if m:
+                matched[0] = m.group(0)
+                before = text[:m.start()]
+                anchor = m.group(0)
+                after = text[m.end():]
+                result = []
+                if before:
+                    result.append({**node, "text": before})
+                link_node = {
+                    "type": "text",
+                    "text": anchor,
+                    "marks": marks + [{"type": "link", "attrs": {"href": target_url, "target": "_blank"}}],
+                }
+                result.append(link_node)
+                if after:
+                    result.append({**node, "text": after})
+                return result  # signal: replace this node with list
+        if "content" in node:
+            new_content = []
+            for child in node["content"]:
+                result = walk(child)
+                if isinstance(result, list):
+                    new_content.extend(result)
+                else:
+                    new_content.append(result)
+            return {**node, "content": new_content}
+        return node
+
+    new_doc = walk(doc)
+    return new_doc, matched[0]
 
 
-def update_post(opener, post_id, slug, new_body, dry_run):
+def fetch_draft(opener, post_id):
+    url = f"{BASE_URL}/api/v1/drafts/{post_id}"
+    try:
+        with opener.open(urllib.request.Request(url)) as res:
+            return json.loads(res.read())
+    except urllib.error.HTTPError as e:
+        return None
+
+
+def update_post(opener, post_id, slug, anchor_phrase, target_url, dry_run):
     if dry_run:
-        return True, "dry-run"
+        # For dry-run, just check body_html from public post for the phrase
+        post = fetch_post(opener, slug)
+        if not post:
+            return False, None, "could not fetch post"
+        body = post.get("body_html", "")
+        m = re.search(re.escape(anchor_phrase), body, re.IGNORECASE)
+        return True, m.group(0) if m else None, "dry-run"
 
-    # Fetch current draft fields to avoid overwriting anything
-    post = fetch_post(opener, slug)
-    if not post:
-        return False, "could not re-fetch post"
+    # Fetch draft (has draft_body as ProseMirror JSON)
+    draft = fetch_draft(opener, post_id)
+    if not draft:
+        return False, None, "could not fetch draft"
 
-    draft_payload = json.dumps({
-        "draft_title": post.get("title", ""),
-        "draft_subtitle": post.get("subtitle", ""),
-        "draft_body": new_body,
-    }).encode()
+    draft_body_str = draft.get("draft_body", "")
+    if not draft_body_str:
+        return False, None, "no draft_body"
+
+    try:
+        doc = json.loads(draft_body_str)
+    except Exception:
+        return False, None, "draft_body not valid JSON"
+
+    # Check if link already present
+    if target_url in draft_body_str:
+        return True, None, "link already present"
+
+    new_doc, matched_text = inject_link_into_prosemirror(doc, anchor_phrase, target_url)
+    if not matched_text:
+        return False, None, f"phrase {anchor_phrase!r} not found in draft_body"
+
+    new_draft_body = json.dumps(new_doc)
     headers = {
         "Content-Type": "application/json",
         "Referer": f"{BASE_URL}/publish/post/{post_id}",
         "Origin": BASE_URL,
     }
+    draft_payload = json.dumps({
+        "draft_title": draft.get("draft_title", ""),
+        "draft_subtitle": draft.get("draft_subtitle", ""),
+        "draft_body": new_draft_body,
+    }).encode()
     req = urllib.request.Request(
         f"{BASE_URL}/api/v1/drafts/{post_id}",
         data=draft_payload,
@@ -198,7 +267,7 @@ def update_post(opener, post_id, slug, new_body, dry_run):
         with opener.open(req) as res:
             json.loads(res.read())
     except urllib.error.HTTPError as e:
-        return False, f"draft PUT failed {e.code}"
+        return False, None, f"draft PUT failed {e.code}"
 
     pub_payload = json.dumps({"send": False, "share_automatically": False}).encode()
     req = urllib.request.Request(
@@ -210,7 +279,7 @@ def update_post(opener, post_id, slug, new_body, dry_run):
     try:
         with opener.open(req) as res:
             json.loads(res.read())
-        return True, "ok"
+        return True, matched_text, "ok"
     except urllib.error.HTTPError as e:
         return False, f"publish failed {e.code} {e.read().decode()[:120]}"
 
@@ -232,34 +301,17 @@ def main():
         target_url = f"{SITE_URL}/posts/{target_slug}"
         print(f"→ {source_slug}  [{anchor_phrase!r} → /posts/{target_slug}]")
 
-        post = fetch_post(opener, source_slug)
-        if not post:
-            fail += 1
-            continue
-
-        body = post.get("body_html") or post.get("draft_body") or ""
-        if not body:
-            print("  ⚠ no body_html, skipping")
+        success, matched, msg = update_post(
+            opener, source_id, source_slug, anchor_phrase, target_url, args.dry_run
+        )
+        if msg == "link already present":
+            print(f"  ✓ link already present")
             skip += 1
-            continue
-
-        # Skip if link already exists
-        if target_url in body:
-            print("  ✓ link already present")
+        elif matched is None and success:
+            print(f"  ⚠ {msg}")
             skip += 1
-            continue
-
-        new_body, matched = inject_link(body, anchor_phrase, target_url)
-        if not matched:
-            print(f"  ⚠ phrase {anchor_phrase!r} not found in body, skipping")
-            skip += 1
-            continue
-
-        print(f"  {'[dry-run] ' if args.dry_run else ''}linking: \"{matched}\" → {target_url}")
-
-        success, msg = update_post(opener, source_id, source_slug, new_body, args.dry_run)
-        if success:
-            print(f"  ✅ {msg}")
+        elif success:
+            print(f"  {'[dry-run] ' if args.dry_run else ''}✅ linked: \"{matched}\"")
             ok += 1
         else:
             print(f"  ❌ {msg}")
