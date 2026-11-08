@@ -3,6 +3,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PostEngagement from "@/components/PostEngagement";
+import type { Metadata } from "next";
 
 function cleanBodyHtml(html: string): string {
   return html.replace(/<div class="captioned-image-container">[\s\S]*?<\/figure><\/div>/, "");
@@ -11,6 +12,38 @@ function cleanBodyHtml(html: string): string {
 export async function generateStaticParams() {
   const posts = await getPosts(50);
   return posts.map((p) => ({ slug: p.slug }));
+}
+
+export async function generateMetadata(
+  { params }: { params: Promise<{ slug: string }> }
+): Promise<Metadata> {
+  const { slug } = await params;
+  const post = await getPost(slug);
+  if (!post) return {};
+
+  const description = post.subtitle || post.description || "An essay by Florence on AI & Spirituality.";
+  const image = post.cover_image || "https://byflorence.net/og-image.png";
+  const url = `https://byflorence.net/posts/${slug}`;
+
+  return {
+    title: `${post.title} — By Florence`,
+    description,
+    openGraph: {
+      title: post.title,
+      description,
+      url,
+      siteName: "By Florence",
+      images: [{ url: image, width: 1200, height: 630 }],
+      type: "article",
+      publishedTime: post.post_date,
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description,
+      images: [image],
+    },
+  };
 }
 
 function formatDate(dateStr: string) {
