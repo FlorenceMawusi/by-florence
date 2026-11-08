@@ -21,7 +21,7 @@ export async function generateMetadata(
   const post = await getPost(slug);
   if (!post) return {};
 
-  const description = post.subtitle || post.description || "An essay by Florence on AI & Spirituality.";
+  const description = post.subtitle || "An essay by Florence on AI & Spirituality.";
   const image = post.cover_image || "https://byflorence.net/og-image.png";
   const url = `https://byflorence.net/posts/${slug}`;
 
