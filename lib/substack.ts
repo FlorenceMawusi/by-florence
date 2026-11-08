@@ -19,7 +19,8 @@ export async function getPosts(limit = 20): Promise<Post[]> {
       cache: "no-store",
     });
     const text = await res.text();
-    return JSON.parse(text);
+    const data = JSON.parse(text);
+    return Array.isArray(data) ? data : (data.posts ?? []);
   } catch (e) {
     console.error("getPosts error:", e);
     return [];

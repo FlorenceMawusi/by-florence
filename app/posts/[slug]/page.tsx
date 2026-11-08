@@ -3,6 +3,8 @@ import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PostEngagement from "@/components/PostEngagement";
+import SubscribeBox from "@/components/SubscribeBox";
+import RelatedPosts from "@/components/RelatedPosts";
 import type { Metadata } from "next";
 
 function cleanBodyHtml(html: string): string {
@@ -109,7 +111,11 @@ export default async function PostPage({ params }: { params: Promise<{ slug: str
         dangerouslySetInnerHTML={{ __html: cleanBodyHtml(post.body_html) }}
       />
 
+      <SubscribeBox />
+
       <PostEngagement slug={slug} substackUrl={post.canonical_url} />
+
+      <RelatedPosts current={post} />
     </article>
   );
 }
